@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ifrs16kit"
+dynamic = ["version"]
+description = "Interactive IFRS 16 auditor re-performance tool producing liquid Excel workbooks"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Ayce Acar" }]
+keywords = [
+    "IFRS 16", "lease accounting", "audit", "re-performance",
+    "ISA 540", "excel", "openpyxl", "right-of-use asset", "lease liability",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Topic :: Office/Business :: Financial :: Accounting",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+]
+dependencies = ["openpyxl>=3.1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "pytest-cov>=4.1"]
+
+# Fill these in once the GitHub repo is public, then rebuild:
+# [project.urls]
+# Homepage = "https://github.com/<user>/ifrs16kit"
+# Repository = "https://github.com/<user>/ifrs16kit"
+# Issues = "https://github.com/<user>/ifrs16kit/issues"
+
+[project.scripts]
+ifrs16kit = "ifrs16kit.core:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "ifrs16kit.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

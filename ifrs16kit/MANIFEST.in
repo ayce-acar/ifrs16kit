@@ -1,0 +1,3 @@
+include VIGNETTE.md
+include TESTING.md
+recursive-include tests *.py

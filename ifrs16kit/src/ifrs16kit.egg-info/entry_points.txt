@@ -1,0 +1,2 @@
+[console_scripts]
+ifrs16kit = ifrs16kit.core:main
