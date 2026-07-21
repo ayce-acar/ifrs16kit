@@ -26,7 +26,7 @@ binary (or a `.py` wrapper) before running layer 6.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs three jobs on every push and pull request:
+`ifrs16kit/.github/workflows/ci.yml` runs three jobs on every push and pull request:
 layers 1–5 on Python 3.9 / 3.11 / 3.13 with a 90% coverage gate, layer 6 on
 Ubuntu with `libreoffice-calc` installed, and a packaging job (`python -m
 build` + `twine check`). A release is publishable only when all three are
