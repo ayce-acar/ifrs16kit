@@ -34,7 +34,7 @@ from .core import (
     run,
 )
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 __all__ = [
     "LeaseInputs", "create_input", "create_calculation", "demo", "cross_check", "build_template", "read_template",
