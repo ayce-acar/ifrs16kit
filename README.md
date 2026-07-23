@@ -1,20 +1,38 @@
-# LeaseAuditKit — Interactive IFRS 16 Re-performance Tool (LIQUID edition)
+# IFRS16Kit
 
-A standalone Python tool that re-performs a lessee's IFRS 16 lease accounting from first principles, independently of the client's own calculation, and delivers the result as a fully formula-driven ("liquid") Excel audit workbook. It is designed for the substantive re-performance of management's lease estimates under ISA 540 (accounting estimates), ISA 500 (audit evidence, including para A21 on re-performance), and ISA 230 (documentation).
+IFRS16Kit is a standalone Python tool that re-performs a lessee's IFRS 16 lease accounting from first principles, independently of the client's own calculation, and delivers the result as a fully formula-driven ("liquid") Excel audit workbook. It supports the substantive re-performance of management's lease estimates under ISA 540 (accounting estimates), ISA 500 (audit evidence, including para A21 on re-performance), and ISA 230 (audit documentation).
 
-Author: Ayce Acar — MSc Business Analytics, Trinity College Dublin.
+Author: Ayce Acar, MSc Business Analytics, Trinity College Dublin.
+
+## Contents
+
+- [Why "liquid"?](#why-liquid)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Workflow](#workflow)
+- [The generated workbook](#the-generated-workbook-10-sheets)
+- [Formatting conventions](#formatting-conventions)
+- [Calculation conventions](#calculation-conventions)
+- [Verification](#verification)
+- [Testing](#testing)
+- [Repository layout](#repository-layout)
+- [Limitations](#limitations)
+- [License](#license)
 
 ## Why "liquid"?
 
-Every derived figure in the generated workbook is a live Excel formula, not a hard-coded value. Change any dark-red input cell — lease term, IBR, payment frequency, country, depreciation method — and the entire model (liability, ROU asset, 120-period schedule, annual summary, journals, deferred tax) recalculates instantly inside Excel. The Python script never bakes numbers into the calculation sheets; it only writes the inputs and the formula fabric around them. A separate, independent Python engine re-computes the same figures so the auditor can verify the Excel model against a second implementation (a "two-engine" control).
+Every derived figure in the generated workbook is a live Excel formula, not a hard-coded value. Change any dark-red input cell (lease term, incremental borrowing rate, payment frequency, country, depreciation method) and the entire model recalculates instantly inside Excel: the lease liability, the right-of-use (ROU) asset, the 120-period schedule, the annual summary, the journals, and the deferred tax. The Python script never bakes numbers into the calculation sheets; it only writes the inputs and the formulas around them.
+
+A separate, independent Python engine recomputes the same figures, so the auditor can verify the Excel model against a second implementation (a "two-engine" control).
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.9 or later
 - openpyxl (installed automatically as a dependency)
-- Microsoft Excel (or LibreOffice) to fill the template and recalculate the output
+- Microsoft Excel or LibreOffice, to fill the input template and recalculate the output
 
-Works from any environment: terminal, VS Code, Spyder, PyCharm.
+The tool runs from any environment: terminal, VS Code, Spyder, PyCharm.
 
 ## Installation
 
@@ -24,56 +42,63 @@ From the package root (the folder containing `pyproject.toml`):
 pip install -e .
 ```
 
-The editable (`-e`) install means edits to `src/ifrs16kit/core.py` take
-effect immediately without reinstalling. Installation registers both the
-importable package (`import ifrs16kit`) and a terminal command
-(`ifrs16kit`), usable from any directory.
+The editable (`-e`) install means edits to `src/ifrs16kit/core.py` take effect immediately without reinstalling. Installation registers the importable package (`import ifrs16kit`) and a terminal command (`ifrs16kit`), usable from any directory; `python -m ifrs16kit` is equivalent.
 
-## Quick start
-
-**Command line** (interactive flow):
+The tool also runs without installation:
 
 ```bash
-# Guided flow — 3 questions, then a fillable template
-ifrs16kit
-
-# Instant demo — runs the CALISMA golden benchmark end-to-end
-ifrs16kit --demo
+python src/ifrs16kit/core.py --demo
 ```
 
-**Spyder / notebook — interactive flow** (asks the questions, waits while you fill the template):
+## Usage
+
+### Command line (interactive flow)
+
+```bash
+ifrs16kit          # guided flow: 3 questions, then a fillable template
+ifrs16kit --demo   # runs the CALISMA golden benchmark end to end
+```
+
+### Spyder or notebook, interactive flow
+
+Asks the questions, then waits while you fill the template:
 
 ```python
 import ifrs16kit as lease
+
 lease.run()
 # 1. answers 3 questions in the console
-# 2. writes IFRS16_Input.xlsx and PAUSES — open it in Excel, fill the
-#    dark-red cells, save, return to the console and press Enter
+# 2. writes IFRS16_Input.xlsx and PAUSES: open it in Excel, fill the
+#    dark-red cells, save, then return to the console and press Enter
 # 3. validates the template and writes IFRS16_Calculation.xlsx
 ```
 
-**Spyder / notebook — non-interactive two-step** (no questions; you control each step):
+### Spyder or notebook, non-interactive two-step
+
+No questions; you control each step:
 
 ```python
 import ifrs16kit as lease
 
-lease.demo()                       # instantly writes BOTH Excel files (golden case)
+lease.demo()                 # instantly writes BOTH Excel files (golden case)
 
-lease.create_input()               # step 1: writes IFRS16_Input.xlsx → fill in Excel
-lease.create_calculation()         # step 2: reads it back → writes IFRS16_Calculation.xlsx
+lease.create_input()         # step 1: writes IFRS16_Input.xlsx, to fill in Excel
+lease.create_calculation()   # step 2: reads it back, writes IFRS16_Calculation.xlsx
 ```
 
-`create_input()` accepts `country=`, `advance=`, `freq=` and a custom path;
-`create_calculation()` accepts custom template/output paths.
+`create_input()` accepts `country=`, `advance=`, `freq=`, and a custom path; `create_calculation()` accepts custom template and output paths.
 
-**Python API** (programmatic — no interview, no template round-trip):
+### Programmatic
+
+No interview, no template round-trip:
 
 ```python
+import datetime
 import ifrs16kit as lease
 
 inp = lease.LeaseInputs(
     entity="Example Co. Limited", country="Ireland",
-    commencement=__import__("datetime").date(2025, 1, 1),
+    commencement=datetime.date(2025, 1, 1),
     term_years=2, freq=12, payment=650.0,
     is_advance=True, ibr_annual=0.06, idc=600.0,
 )
@@ -81,56 +106,67 @@ inp = lease.LeaseInputs(
 lease.cross_check(inp)                                     # dict of key figures
 lease.build_calculation_workbook(inp, "IFRS16_Calc.xlsx")  # 10-sheet liquid workbook
 lease.build_template({"country": "Ireland", "is_advance": True, "freq": 12},
-                   "IFRS16_Input.xlsx")                  # blank input template
+                     "IFRS16_Input.xlsx")                  # blank input template
 inp2 = lease.read_template("IFRS16_Input.xlsx")            # validated read-back
 ```
 
-Public API: `LeaseInputs`, `cross_check`, `build_template`, `read_template`,
-`build_calculation_workbook`, `print_summary`, plus the `COUNTRIES`,
-`FREQUENCIES`, and `MAX_PERIODS` constants.
+### Public API
+
+| Export | Purpose |
+|---|---|
+| `LeaseInputs` | Container for a single lease's input parameters |
+| `cross_check(inputs)` | Independent Python recomputation of the key figures; returns a dict |
+| `build_template(options, path)` | Writes the blank liquid input template (`IFRS16_Input.xlsx`) |
+| `read_template(path)` | Reads a filled template back, validates it, and returns `LeaseInputs` |
+| `build_calculation_workbook(inputs, path)` | Writes the 10-sheet liquid calculation workbook |
+| `print_summary` | Console summary of the cross-check figures |
+| `COUNTRIES`, `FREQUENCIES`, `MAX_PERIODS` | Supported jurisdictions, payment frequencies, and the 120-period template capacity |
 
 ## Workflow
 
-1. **Interview.** The script asks three questions: country/jurisdiction (Türkiye, Ireland, United Kingdom, UAE, Australia), payment timing (advance/arrears), and payment frequency (monthly, quarterly, semi-annual, annual).
-2. **Template.** It generates `IFRS16_Input.xlsx` — a single-sheet LIQUID input template. Only the dark-red, thick-bordered cells are editable inputs; everything else (total term, N, periodic rate, capacity checks) auto-calculates with live formulas. Dropdowns constrain frequency, timing, depreciation method, and country.
-3. **Fill and save.** Open the template in Excel, fill every dark-red cell, confirm the two green validation cells both say "OK", save, and return to the running script.
-4. **Validation.** The script reads the template back and validates it: non-empty entity, valid date, positive term/payment/useful life, IBR entered as a decimal or percentage below 100%, a whole number of payment periods, and N ≤ 120 (template capacity). Errors are listed cell-by-cell so they can be fixed and re-read without restarting.
-5. **Output.** It generates `IFRS16_Calculation.xlsx` — the full 10-sheet liquid workbook — and prints an independent Python cross-check of the key figures.
+1. Interview. The script asks three questions: country or jurisdiction (Türkiye, Ireland, United Kingdom, UAE, Australia), payment timing (advance or arrears), and payment frequency (monthly, quarterly, semi-annual, annual).
+2. Template. It generates `IFRS16_Input.xlsx`, a single-sheet liquid input template. Only the dark-red, thick-bordered cells are editable inputs; everything else (total term, N, periodic rate, capacity checks) auto-calculates with live formulas. Dropdowns constrain frequency, timing, depreciation method, and country.
+3. Fill and save. Open the template in Excel, fill every dark-red cell, confirm the two green validation cells both say "OK", save, and return to the running script.
+4. Validation. The script reads the template back and validates it: non-empty entity, valid date, positive term, payment and useful life, IBR entered as a decimal or a percentage below 100%, a whole number of payment periods, and at most 120 payment periods (the template capacity). Errors are listed cell by cell so they can be fixed and re-read without restarting.
+5. Output. It generates `IFRS16_Calculation.xlsx`, the full 10-sheet liquid workbook, and prints an independent Python cross-check of the key figures.
 
 ## The generated workbook (10 sheets)
 
 | Sheet | Contents |
 |---|---|
-| **Inputs** | All lease inputs plus live-linked key outputs (liability, ROU, totals) and country-driven framework/audit-standard lookups from Setup. |
-| **Initial Measurement** | PV of lease payments period-by-period (IFRS 16 ¶26) and the ROU asset build-up (¶24: liability + IDC + prepayments − incentives + restoration). |
-| **Lease Schedule** | 120-period-capacity amortisation and depreciation schedule (¶36 effective interest; ¶31 depreciation), with year tags and a Final Payment status flag. Rows self-hide beyond N. |
-| **Annual Summary** | P&L impact and year-end balances by reporting year, a front-loading memo vs a straight-line charge, and five automated reconciliation checks (closing liability = 0, closing ROU = 0, principal = initial liability, expense = payments + IDC, front-loading sums to nil). |
-| **Journals** | Initial-recognition entry with debit/credit balance check, plus representative Period 1 entries (payment, interest unwind, depreciation). |
-| **Tax_Reconciliation** | Illustrative year-1 accounting-vs-cash-rental P&L difference and deferred-tax computation at the jurisdiction's rate. |
-| **Findings** | Findings-and-recommendations register wired to the reconciliation checks — flags "Y" and a recommendation automatically when a check fails. |
+| **Inputs** | All lease inputs plus live-linked key outputs (liability, ROU, totals) and country-driven framework and audit-standard lookups from Setup. |
+| **Initial Measurement** | Present value of the lease payments period by period (IFRS 16.26) and the ROU asset build-up (IFRS 16.24: liability + IDC + prepayments - incentives + restoration). |
+| **Lease Schedule** | 120-period-capacity amortisation and depreciation schedule (effective interest under IFRS 16.36, depreciation under IFRS 16.31), with year tags and a Final Payment status flag. Rows self-hide beyond N. |
+| **Annual Summary** | P&L impact and year-end balances by reporting year, a front-loading memo against a straight-line charge, and five automated reconciliation checks (closing liability = 0, closing ROU = 0, principal = initial liability, expense = payments + IDC, front-loading sums to nil). |
+| **Journals** | Initial-recognition entry with a debit/credit balance check, plus representative Period 1 entries (payment, interest unwind, depreciation). |
+| **Tax_Reconciliation** | Illustrative year-1 accounting-versus-cash-rental P&L difference and the deferred-tax computation at the jurisdiction's rate. |
+| **Findings** | Findings-and-recommendations register wired to the reconciliation checks; a "Y" flag and a recommendation appear automatically when a check fails. |
 | **Audit_Procedures** | 20 substantive procedures (P-1 to P-20) mapped to assertions (existence, completeness, accuracy, cut-off, classification, presentation). |
 | **PBC_List** | 18-item prepared-by-client request list with purpose, format, and due dates. |
-| **Setup** | Country lookup table driving currency, reporting framework, lease standard (IFRS 16 / TFRS 16 / AASB 16), audit standards (ISA / ISA (Ireland) / ISA (UK) / BDS / ASA 540-500-230), and illustrative tax rate. |
+| **Setup** | Country lookup table driving currency, reporting framework, lease standard (IFRS 16, TFRS 16, AASB 16), audit standards (ISA, ISA (Ireland), ISA (UK), BDS, ASA 540-500-230), and an illustrative tax rate. |
 
-## Colour and formatting conventions
+## Formatting conventions
 
-- **Dark red fill, thick border, bold** — your input (client data / auditor assumptions)
-- **Black** — formula / computed
-- **Green font on light-green fill** — link to another sheet, or an automated check
-- **Navy headers, Times New Roman throughout**
+| Style | Meaning |
+|---|---|
+| Dark red fill, thick border, bold | Input cell (client data and auditor assumptions) |
+| Black | Formula or computed value |
+| Green font on light green fill | Link to another sheet, or an automated check |
+
+Headers are navy; the font is Times New Roman throughout.
 
 ## Calculation conventions
 
-- Periodic discount rate uses the effective (compound) conversion: `(1 + IBR)^(1/frequency) − 1`, not simple pro-rata.
-- Advance payments: the first payment is undiscounted (discount exponent `p − 1`); interest accrues on the opening liability net of the period's payment. Arrears: exponent `p`; interest on the full opening liability.
-- Depreciation: straight-line over the shorter of the lease term and useful life (no ownership transfer assumed), or reducing balance at `1 − (1 − annual rate)^(1/frequency)` per period with a final-period write-off of the remaining carrying amount.
+- The periodic discount rate uses the effective (compound) conversion, `(1 + IBR)^(1/frequency) - 1`, not simple pro-rata.
+- Advance payments: the first payment is undiscounted (discount exponent `p - 1`), and interest accrues on the opening liability net of the period's payment. Arrears: exponent `p`, with interest on the full opening liability.
+- Depreciation is straight-line over the shorter of the lease term and the useful life (no ownership transfer assumed), or reducing balance at `1 - (1 - annual rate)^(1/frequency)` per period with a final-period write-off of the remaining carrying amount.
 
 ## Verification
 
-The tool ships with a golden benchmark (the CALISMA case: monthly advance, 24 periods, 6% IBR, 650/month, 600 IDC):
+The tool ships with a golden benchmark (the CALISMA case: monthly advance, 24 periods, 6% IBR, 650 per month, 600 IDC):
 
 | Figure | Expected |
-|---|---|
+|---|---:|
 | Lease liability at commencement | 14,761.09 |
 | ROU asset at commencement | 15,361.09 |
 | Total interest over term | 838.91 |
@@ -138,19 +174,44 @@ The tool ships with a golden benchmark (the CALISMA case: monthly advance, 24 pe
 
 Run `ifrs16kit --demo` and compare the console cross-check and `Inputs!B36:B42` of the generated workbook against these values. The five reconciliation checks on the Annual Summary sheet must all read "OK".
 
-## Files
+## Testing
 
-| File | Role |
-|---|---|
-| `pyproject.toml` | Package metadata, dependency, and the `ifrs16kit` CLI entry point |
-| `src/ifrs16kit/core.py` | The engine, template builder, validator, and workbook builder |
-| `src/ifrs16kit/__init__.py` | Public API exports |
-| `IFRS16_Input.xlsx` | Generated input template (step 2) |
-| `IFRS16_Calculation.xlsx` | Generated liquid calculation workbook (step 5) |
-| `VIGNETTE.md` | Worked example mapped to IFRS 16 paragraphs and ISA requirements |
+```bash
+pip install pytest
+pytest
+```
 
-The tool also runs without installation: `python src/ifrs16kit/core.py --demo`.
+The suite contains 166 tests organised in six layers, described in `TESTING.md`: the calculation engine (the golden benchmark plus the accounting identities across the full grid of frequency, timing, depreciation method, term, and useful life), the input template and every cell-by-cell validation rule, the structure of the generated workbook (including a check that the calculation sheets contain zero hard-coded numbers), the CLI and interview flow, the public API, and a final layer in which LibreOffice recalculates the generated workbooks headlessly and the results are compared with the Python engine. Line coverage of `core.py` is 98%. The LibreOffice layer skips automatically when LibreOffice is not installed.
+
+A GitHub Actions workflow runs the full suite on every push and pull request, on Python 3.9, 3.11, and 3.13, with LibreOffice installed so the recalculation layer runs in CI as well.
+
+## Repository layout
+
+```text
+ifrs16kit/
+├── pyproject.toml              package metadata, dependency, ifrs16kit CLI entry point
+├── LICENSE                     MIT
+├── MANIFEST.in
+├── README.md
+├── TESTING.md                  the six-layer verification protocol
+├── VIGNETTE.md                 worked example mapped to IFRS 16 paragraphs and ISA requirements
+├── src/
+│   └── ifrs16kit/
+│       ├── __init__.py         public API exports
+│       ├── __main__.py         enables python -m ifrs16kit
+│       └── core.py             engine, template builder, validator, workbook builder
+├── tests/                      166-test suite (see TESTING.md)
+└── .github/
+    └── workflows/
+        └── ci.yml              CI: full suite on Python 3.9, 3.11, and 3.13
+```
+
+The two Excel files (`IFRS16_Input.xlsx` and `IFRS16_Calculation.xlsx`) are generated at run time in the working directory; they are not part of the repository.
 
 ## Limitations
 
-Single lease, fixed payments, no mid-term modifications or remeasurements, no CPI-linked variable payments, template capacity of 120 payment periods. These are audit re-performance scoping choices, not engine defects: modifications and variable payments are covered qualitatively as procedures P-12 and P-13 on the Audit_Procedures sheet.
+Single lease, fixed payments, no mid-term modifications or remeasurements, no CPI-linked variable payments, and a template capacity of 120 payment periods (`MAX_PERIODS` in `core.py`), which covers ten years of monthly payments or thirty years of quarterly payments. These are audit re-performance scoping choices, not engine defects: modifications and variable payments are covered qualitatively as procedures P-12 and P-13 on the Audit_Procedures sheet.
+
+## License
+
+MIT. See `LICENSE`.
