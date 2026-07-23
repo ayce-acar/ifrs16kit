@@ -14,6 +14,7 @@ src/ifrs16kit.egg-info/entry_points.txt
 src/ifrs16kit.egg-info/requires.txt
 src/ifrs16kit.egg-info/top_level.txt
 tests/conftest.py
+tests/selftest.py
 tests/test_api.py
 tests/test_cli.py
 tests/test_engine.py
